@@ -47,3 +47,14 @@ type Meta struct {
 	Total      int `json:"total"`
 	TotalPages int `json:"total_pages"`
 }
+// Parameter query string untuk endpoint daftar
+type ListQuery struct {
+	Page     int
+	Limit    int
+	Search   string
+	Sort     string
+	Order    string
+	IsActive *bool
+	MinGrade *int
+	MaxGrade *int
+}

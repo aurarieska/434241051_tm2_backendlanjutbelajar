@@ -2,6 +2,7 @@ package main
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -74,18 +75,62 @@ func gradeValid(g int) bool {
 	return g >= 0 && g <= 100
 }
 
-// parsePagination membaca ?page dan ?limit dengan nilai bawaan yang aman.
-func parsePagination(c *fiber.Ctx) (page int, limit int) {
-	page = c.QueryInt("page", 1)
-	limit = c.QueryInt("limit", 10)
-	if page < 1 {
-		page = 1
+const (
+	defaultLimit = 10
+	maxLimit     = 100 // batas atas agar satu request tidak menarik seluruh data
+)
+
+// Daftar putih field yang boleh dipakai untuk mengurutkan.
+var allowedSort = map[string]bool{
+	"id": true, "nim": true, "name": true, "grade": true,
+}
+
+// parseListQuery membaca query string dan memberi nilai bawaan yang aman.
+func parseListQuery(c *fiber.Ctx) ListQuery {
+	q := ListQuery{
+		Page:   c.QueryInt("page", 1),
+		Limit:  c.QueryInt("limit", defaultLimit),
+		Search: strings.TrimSpace(c.Query("search")),
+		Sort:   c.Query("sort", "id"),
+		Order:  strings.ToLower(c.Query("order", "asc")),
 	}
-	if limit < 1 {
-		limit = 10
+
+	if q.Page < 1 {
+		q.Page = 1
 	}
-	if limit > 100 {
-		limit = 100
+	if q.Limit < 1 {
+		q.Limit = defaultLimit
 	}
-	return page, limit
+	if q.Limit > maxLimit {
+		q.Limit = maxLimit
+	}
+	if !allowedSort[q.Sort] {
+		q.Sort = "id"
+	}
+	if q.Order != "desc" {
+		q.Order = "asc"
+	}
+
+	if raw := c.Query("is_active"); raw != "" {
+		if v, err := strconv.ParseBool(raw); err == nil {
+			q.IsActive = &v
+		}
+	}
+	if raw := c.Query("min_grade"); raw != "" {
+		if v, err := strconv.Atoi(raw); err == nil {
+			q.MinGrade = &v
+		}
+	}
+	if raw := c.Query("max_grade"); raw != "" {
+		if v, err := strconv.Atoi(raw); err == nil {
+			q.MaxGrade = &v
+		}
+	}
+
+	return q
+}
+
+// cocokNama true jika kata kunci muncul di nama (huruf besar/kecil diabaikan).
+func cocokNama(s Student, kata string) bool {
+	return strings.Contains(strings.ToLower(s.Name), strings.ToLower(kata))
 }

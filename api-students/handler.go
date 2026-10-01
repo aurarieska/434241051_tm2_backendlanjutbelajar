@@ -1,30 +1,69 @@
 package main
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-// GET /api/v1/students?page=1&limit=10
+// GET /api/v1/students?page=1&limit=10&search=budi&sort=grade&order=desc&is_active=true&min_grade=70&max_grade=100
 func listStudents(c *fiber.Ctx) error {
-	page, limit := parsePagination(c)
+	q := parseListQuery(c)
 
-	total := len(students)
-	totalPages := (total + limit - 1) / limit
+	// 1) Saring
+	hasil := []Student{}
+	for _, s := range students {
+		if q.IsActive != nil && s.IsActive != *q.IsActive {
+			continue
+		}
+		if q.MinGrade != nil && s.Grade < *q.MinGrade {
+			continue
+		}
+		if q.MaxGrade != nil && s.Grade > *q.MaxGrade {
+			continue
+		}
+		if q.Search != "" && !cocokNama(s, q.Search) {
+			continue
+		}
+		hasil = append(hasil, s)
+	}
 
-	mulai := (page - 1) * limit
+	// 2) Urutkan
+	sort.SliceStable(hasil, func(i, j int) bool {
+		a, b := hasil[i], hasil[j]
+		var cmp int
+		switch q.Sort {
+		case "nim":
+			cmp = strings.Compare(a.NIM, b.NIM)
+		case "name":
+			cmp = strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name))
+		case "grade":
+			cmp = a.Grade - b.Grade
+		default:
+			cmp = a.ID - b.ID
+		}
+		if q.Order == "desc" {
+			return cmp > 0
+		}
+		return cmp < 0
+	})
+
+	// 3) Potong sesuai halaman
+	total := len(hasil)
+	totalPages := (total + q.Limit - 1) / q.Limit
+	mulai := (q.Page - 1) * q.Limit
 	if mulai > total {
 		mulai = total
 	}
-	akhir := mulai + limit
+	akhir := mulai + q.Limit
 	if akhir > total {
 		akhir = total
 	}
 
-	return okList(c, "daftar mahasiswa berhasil diambil", students[mulai:akhir], &Meta{
-		Page: page, Limit: limit, Total: total, TotalPages: totalPages,
+	return okList(c, "daftar mahasiswa berhasil diambil", hasil[mulai:akhir], &Meta{
+		Page: q.Page, Limit: q.Limit, Total: total, TotalPages: totalPages,
 	})
 }
 
