@@ -16,11 +16,21 @@ func ok(c *fiber.Ctx, message string, data any) error {
 	})
 }
 
+func okList(c *fiber.Ctx, message string, data any, meta *Meta) error {
+	return c.Status(fiber.StatusOK).JSON(WebResponse{
+		Success: true, Message: message, Data: data, Meta: meta,
+	})
+}
+
 func created(c *fiber.Ctx, message string, data any, location string) error {
 	c.Set("Location", location)
 	return c.Status(fiber.StatusCreated).JSON(WebResponse{
 		Success: true, Message: message, Data: data,
 	})
+}
+
+func noContent(c *fiber.Ctx) error {
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func fail(c *fiber.Ctx, status int, message string) error {
@@ -62,4 +72,20 @@ func paramID(c *fiber.Ctx) (int, bool) {
 
 func gradeValid(g int) bool {
 	return g >= 0 && g <= 100
+}
+
+// parsePagination membaca ?page dan ?limit dengan nilai bawaan yang aman.
+func parsePagination(c *fiber.Ctx) (page int, limit int) {
+	page = c.QueryInt("page", 1)
+	limit = c.QueryInt("limit", 10)
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 10
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	return page, limit
 }
