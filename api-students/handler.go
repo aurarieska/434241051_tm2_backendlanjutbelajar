@@ -92,11 +92,10 @@ func createStudent(c *fiber.Ctx) error {
 	req.NIM = strings.TrimSpace(req.NIM)
 	req.Name = strings.TrimSpace(req.Name)
 
+	// 422: validasi isi
 	errs := map[string]string{}
 	if req.NIM == "" {
 		errs["nim"] = "wajib diisi"
-	} else if nimTerpakai(req.NIM, 0) {
-		errs["nim"] = "sudah dipakai"
 	}
 	if req.Name == "" {
 		errs["name"] = "wajib diisi"
@@ -106,6 +105,11 @@ func createStudent(c *fiber.Ctx) error {
 	}
 	if len(errs) > 0 {
 		return failValidation(c, errs)
+	}
+
+	// 409: bentrok dengan data yang ada
+	if nimTerpakai(req.NIM, 0) {
+		return fail(c, fiber.StatusConflict, "NIM sudah dipakai mahasiswa lain")
 	}
 
 	baru := Student{
@@ -142,11 +146,10 @@ func replaceStudent(c *fiber.Ctx) error {
 	req.NIM = strings.TrimSpace(req.NIM)
 	req.Name = strings.TrimSpace(req.Name)
 
+	// 422: validasi isi
 	errs := map[string]string{}
 	if req.NIM == "" {
 		errs["nim"] = "wajib diisi pada PUT"
-	} else if nimTerpakai(req.NIM, id) {
-		errs["nim"] = "sudah dipakai"
 	}
 	if req.Name == "" {
 		errs["name"] = "wajib diisi pada PUT"
@@ -161,6 +164,11 @@ func replaceStudent(c *fiber.Ctx) error {
 	}
 	if len(errs) > 0 {
 		return failValidation(c, errs)
+	}
+
+	// 409: bentrok dengan data yang ada
+	if nimTerpakai(req.NIM, id) {
+		return fail(c, fiber.StatusConflict, "NIM sudah dipakai mahasiswa lain")
 	}
 
 	students[i].NIM = req.NIM
@@ -192,15 +200,13 @@ func patchStudent(c *fiber.Ctx) error {
 		return fail(c, fiber.StatusBadRequest, "tidak ada field yang diubah")
 	}
 
-	// Validasi semua dulu, baru terapkan, supaya tidak ada perubahan setengah jalan
+	// 422: validasi semua dulu, baru terapkan, supaya tidak ada perubahan setengah jalan
 	errs := map[string]string{}
 	if req.NIM != nil {
 		nim := strings.TrimSpace(*req.NIM)
 		req.NIM = &nim
 		if nim == "" {
 			errs["nim"] = "tidak boleh kosong"
-		} else if nimTerpakai(nim, id) {
-			errs["nim"] = "sudah dipakai"
 		}
 	}
 	if req.Name != nil {
@@ -215,6 +221,11 @@ func patchStudent(c *fiber.Ctx) error {
 	}
 	if len(errs) > 0 {
 		return failValidation(c, errs)
+	}
+
+	// 409: bentrok dengan data yang ada
+	if req.NIM != nil && nimTerpakai(*req.NIM, id) {
+		return fail(c, fiber.StatusConflict, "NIM sudah dipakai mahasiswa lain")
 	}
 
 	if req.NIM != nil {

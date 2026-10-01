@@ -11,6 +11,18 @@ import (
 var students = []Student{}
 var nextID = 1
 
+// requireJSON menolak POST/PUT/PATCH yang Content-Type-nya bukan JSON (415).
+func requireJSON(c *fiber.Ctx) error {
+	switch c.Method() {
+	case fiber.MethodPost, fiber.MethodPut, fiber.MethodPatch:
+		if !strings.HasPrefix(c.Get("Content-Type"), fiber.MIMEApplicationJSON) {
+			return fail(c, fiber.StatusUnsupportedMediaType,
+				"Content-Type harus application/json")
+		}
+	}
+	return c.Next()
+}
+
 func ok(c *fiber.Ctx, message string, data any) error {
 	return c.Status(fiber.StatusOK).JSON(WebResponse{
 		Success: true, Message: message, Data: data,

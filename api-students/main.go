@@ -22,7 +22,7 @@ func main() {
 		},
 	})
 
-	s := app.Group("/api/v1/students")
+	s := app.Group("/api/v1/students", requireJSON)
 	s.Get("/", listStudents)
 	s.Get("/:id", getStudent)
 	s.Post("/", createStudent)
